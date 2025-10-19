@@ -1,0 +1,18 @@
+{
+  "name": "agents-in-websites",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "AI Customer Service Agent deployed on Vercel",
+  "dependencies": {
+    "@openai/agents": "^0.1.10",
+    "zod": "^3.25.76"
+  }
+}

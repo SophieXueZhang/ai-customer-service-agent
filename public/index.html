@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Customer Service Agent</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 600px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.assistant {
+      justify-content: flex-start;
+    }
+
+    .message-content {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      line-height: 1.5;
+    }
+
+    .message.user .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .message.assistant .message-content {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .message.system .message-content {
+      background: #fff3cd;
+      color: #856404;
+      max-width: 100%;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .chat-input-container {
+      padding: 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 24px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .chat-input:focus {
+      border-color: #667eea;
+    }
+
+    .send-button {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.3s;
+    }
+
+    .send-button:hover:not(:disabled) {
+      transform: scale(1.05);
+    }
+
+    .send-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px;
+      background: #f0f0f0;
+      border-radius: 18px;
+      width: fit-content;
+    }
+
+    .typing-indicator span {
+      width: 8px;
+      height: 8px;
+      background: #999;
+      border-radius: 50%;
+      animation: typing 1.4s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+      0%, 60%, 100% {
+        transform: translateY(0);
+      }
+      30% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .error-message {
+      color: #dc3545;
+      font-size: 14px;
+      text-align: center;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      AI Customer Service
+    </div>
+
+    <div class="chat-messages" id="messages">
+      <div class="message system">
+        <div class="message-content">
+          Welcome! Ask me anything.
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-container">
+      <input
+        type="text"
+        class="chat-input"
+        id="userInput"
+        placeholder="Type your question..."
+        autocomplete="off"
+      >
+      <button class="send-button" id="sendButton">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const messagesContainer = document.getElementById('messages');
+    const userInput = document.getElementById('userInput');
+    const sendButton = document.getElementById('sendButton');
+
+    function addMessage(role, content) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}`;
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      contentDiv.textContent = content;
+
+      messageDiv.appendChild(contentDiv);
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'message assistant';
+      typingDiv.id = 'typing-indicator';
+
+      const indicator = document.createElement('div');
+      indicator.className = 'typing-indicator';
+      indicator.innerHTML = '<span></span><span></span><span></span>';
+
+      typingDiv.appendChild(indicator);
+      messagesContainer.appendChild(typingDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      const indicator = document.getElementById('typing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      // Disable input
+      userInput.disabled = true;
+      sendButton.disabled = true;
+
+      // Add user message
+      addMessage('user', message);
+      userInput.value = '';
+
+      // Show typing indicator
+      showTypingIndicator();
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+
+        removeTypingIndicator();
+
+        if (response.ok) {
+          addMessage('assistant', data.response);
+        } else {
+          addMessage('system', `Error: ${data.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        removeTypingIndicator();
+        addMessage('system', `Network error: ${error.message}`);
+      } finally {
+        // Re-enable input
+        userInput.disabled = false;
+        sendButton.disabled = false;
+        userInput.focus();
+      }
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Focus input on load
+    userInput.focus();
+  </script>
+</body>
+</html>
